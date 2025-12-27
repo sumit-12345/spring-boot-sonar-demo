@@ -1,0 +1,64 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven3'
+        jdk 'JDK17'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Clean & Build') {
+            steps {
+                bat 'mvn clean compile'
+            }
+        }
+
+        stage('Run Tests & JaCoCo') {
+            steps {
+                bat 'mvn test'
+            }
+            post {
+                always {
+                    echo 'Tests completed. JaCoCo report generated.'
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                bat 'mvn package -DskipTests=false'
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+
+        stage('Build Docker Image') {
+            when {
+                expression { fileExists('Dockerfile') }
+            }
+            steps {
+                bat 'docker build -t spring-boot-sonar-demo:latest .'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '✅ Build completed successfully on Windows'
+        }
+        failure {
+            echo '❌ Build failed'
+        }
+    }
+}
