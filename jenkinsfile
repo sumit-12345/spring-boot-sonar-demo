@@ -2,63 +2,45 @@ pipeline {
     agent any
 
     tools {
-        maven 'Maven3'
         jdk 'JDK17'
+        maven 'Maven3'
+    }
+
+    environment {
+        APP_NAME = 'spring-boot-sonar-demo'
+        IMAGE_NAME = 'spring-boot-sonar-demo'
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Clone Repository') {
             steps {
-                checkout scm
+                git branch: 'main',
+                    url: 'https://github.com/your-username/spring-boot-sonar-demo.git'
             }
         }
 
-        stage('Clean & Build') {
+        stage('Build & Test') {
             steps {
-                bat 'mvn clean compile'
+                bat 'mvn clean package'
             }
         }
 
-        stage('Run Tests & JaCoCo') {
+        stage('Docker Build') {
             steps {
-                bat 'mvn test'
-            }
-            post {
-                always {
-                    echo 'Tests completed. JaCoCo report generated.'
-                }
-            }
-        }
-
-        stage('Package') {
-            steps {
-                bat 'mvn package -DskipTests=false'
-            }
-        }
-
-        stage('Archive Artifacts') {
-            steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
-
-        stage('Build Docker Image') {
-            when {
-                expression { fileExists('Dockerfile') }
-            }
-            steps {
-                bat 'docker build -t spring-boot-sonar-demo:latest .'
+                bat '''
+                docker build -t %IMAGE_NAME%:latest .
+                '''
             }
         }
     }
 
     post {
         success {
-            echo '✅ Build completed successfully on Windows'
+            echo '✅ Repository cloned, build completed, and Docker image created successfully'
         }
         failure {
-            echo '❌ Build failed'
+            echo '❌ Pipeline failed'
         }
     }
 }
